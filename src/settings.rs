@@ -417,6 +417,18 @@ pub struct InitSettings {
         )
     )]
     pub start_daemon: bool,
+
+    /// Install the SELinux profile for `/nix`
+    #[cfg_attr(
+        feature = "cli",
+        clap(
+            action(ArgAction::SetFalse),
+            default_value = "true",
+            env = "NIX_INSTALLER_SELINUX",
+            long = "no-selinux"
+        )
+    )]
+    pub selinux: bool,
 }
 
 impl InitSettings {
@@ -449,16 +461,25 @@ impl InitSettings {
             },
         };
 
-        Ok(Self { init, start_daemon })
+        Ok(Self {
+            init,
+            start_daemon,
+            selinux: true,
+        })
     }
 
     /// A listing of the settings, suitable for [`Planner::settings`](crate::planner::Planner::settings)
     pub fn settings(&self) -> Result<HashMap<String, serde_json::Value>, InstallSettingsError> {
-        let Self { init, start_daemon } = self;
+        let Self {
+            init,
+            start_daemon,
+            selinux,
+        } = self;
         let mut map = HashMap::default();
 
         map.insert("init".into(), serde_json::to_value(init)?);
         map.insert("start_daemon".into(), serde_json::to_value(start_daemon)?);
+        map.insert("selinux".into(), serde_json::to_value(selinux)?);
         Ok(map)
     }
 

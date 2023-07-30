@@ -68,7 +68,7 @@ impl Planner for Linux {
                 .boxed(),
         );
 
-        if has_selinux {
+        if has_selinux && self.init.selinux {
             plan.push(
                 ProvisionSelinux::plan("/usr/share/selinux/packages/nix.pp".into())
                     .await
