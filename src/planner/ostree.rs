@@ -13,6 +13,9 @@ use crate::{
 };
 use std::{collections::HashMap, path::PathBuf};
 
+#[cfg(feature = "cli")]
+use clap::ArgAction;
+
 use super::{
     linux::{
         check_nix_not_already_installed, check_not_nixos, check_not_wsl1, check_systemd_active,
@@ -30,6 +33,18 @@ pub struct Ostree {
     persistence: PathBuf,
     #[cfg_attr(feature = "cli", clap(flatten))]
     pub settings: CommonSettings,
+
+    /// Install the SELinux profile for `/nix`
+    #[cfg_attr(
+        feature = "cli",
+        clap(
+            action(ArgAction::SetFalse),
+            default_value = "true",
+            env = "NIX_INSTALLER_SELINUX",
+            long = "no-selinux"
+        )
+    )]
+    pub selinux: bool,
 }
 
 #[async_trait::async_trait]
@@ -39,6 +54,7 @@ impl Planner for Ostree {
         Ok(Self {
             persistence: PathBuf::from("/var/home/nix"),
             settings: CommonSettings::default().await?,
+            selinux: true,
         })
     }
 
@@ -190,7 +206,7 @@ impl Planner for Ostree {
                 .boxed(),
         );
 
-        if has_selinux {
+        if has_selinux && self.selinux {
             plan.push(
                 ProvisionSelinux::plan("/etc/nix-installer/selinux/packages/nix.pp".into())
                     .await
@@ -231,6 +247,7 @@ impl Planner for Ostree {
         let Self {
             persistence,
             settings,
+            selinux,
         } = self;
         let mut map = HashMap::default();
 
@@ -239,6 +256,7 @@ impl Planner for Ostree {
             "persistence".to_string(),
             serde_json::to_value(persistence)?,
         );
+        map.insert("selinux".to_string(), serde_json::to_value(selinux)?);
 
         Ok(map)
     }
